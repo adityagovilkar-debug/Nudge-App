@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <!-- full-bleed square so the icon works as both "any" and "maskable";
+       the OS rounds the corners on the home screen. -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- friendly check mark -->
+  <path d="M158 268 L226 336 L360 188"
+        fill="none" stroke="#ffffff" stroke-width="40"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the little 'nudge' accent dot -->
+  <circle cx="372" cy="150" r="30" fill="#fbbf24"/>
+</svg>
