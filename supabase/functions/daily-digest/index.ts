@@ -47,7 +47,7 @@ function fmtTime(t: string | null): string {
   return ` · ${h12}:${m}${ampm}`;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -58,6 +58,20 @@ Deno.serve(async () => {
   // The hour (in each user's local time) at which to send. Default 7am.
   const sendHour = Number(Deno.env.get("REMINDER_HOUR") ?? "7");
 
+  // Test mode (`?test=1` or body {"test":true}) bypasses the hour gate so the
+  // digest can be sent/verified on demand. It still only emails opted-in users
+  // their own due items, exactly like the real run.
+  let test = false;
+  try {
+    test = new URL(req.url).searchParams.get("test") === "1";
+    if (!test && req.headers.get("content-type")?.includes("application/json")) {
+      const body = await req.json().catch(() => ({}));
+      test = body?.test === true;
+    }
+  } catch {
+    // ignore
+  }
+
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, email, full_name, timezone")
@@ -67,13 +81,15 @@ Deno.serve(async () => {
 
   let sent = 0;
   let considered = 0;
+  const errors: string[] = [];
 
   for (const p of profiles ?? []) {
     if (!p.email) continue;
     const tz = p.timezone || "UTC";
     const { today, hour } = localInfo(tz);
     // Only email each user once, when it's the send-hour in their timezone.
-    if (hour !== sendHour) continue;
+    // (Test mode bypasses this so we can verify on demand.)
+    if (!test && hour !== sendHour) continue;
     considered++;
 
     const { data: errands } = await supabase
@@ -142,10 +158,24 @@ Deno.serve(async () => {
       },
       body: JSON.stringify({ from, to: [p.email], subject, html }),
     });
-    if (res.ok) sent++;
+    if (res.ok) {
+      sent++;
+    } else {
+      const detail = await res.text().catch(() => "");
+      console.error(`Resend failed for ${p.email}: ${res.status} ${detail}`);
+      errors.push(`${p.email}: ${res.status} ${detail.slice(0, 200)}`);
+    }
   }
 
-  return Response.json({ considered, emailsSent: sent });
+  return Response.json({
+    now: new Date().toISOString(),
+    sendHour,
+    test,
+    resendConfigured: !!resendKey,
+    considered,
+    emailsSent: sent,
+    errors,
+  });
 });
 
 function escapeHtml(s: string): string {
