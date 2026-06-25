@@ -11,6 +11,7 @@ import {
   LogOut,
   User,
   Check,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -24,6 +25,7 @@ import {
   type Theme,
 } from "@/lib/theme";
 import { CategoryManager } from "@/components/CategoryManager";
+import { NotificationToggle } from "@/components/NotificationToggle";
 import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
@@ -208,6 +210,11 @@ export default function SettingsPage() {
             }
           />
         </div>
+      </Section>
+
+      {/* Phone notifications */}
+      <Section icon={Bell} title="Phone notifications">
+        <NotificationToggle />
       </Section>
 
       {/* Categories */}

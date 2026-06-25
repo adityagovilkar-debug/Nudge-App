@@ -256,13 +256,18 @@ export function useUpdateErrand() {
       input,
       checklist,
       original,
+      resetReminder,
     }: {
       id: string;
       input: ErrandInput;
       checklist?: ChecklistDraft[];
       original?: ChecklistItem[];
+      resetReminder?: boolean;
     }) => {
-      const { error } = await sb().from("errands").update(input).eq("id", id);
+      // Clearing reminded_at lets a rescheduled errand fire its due-time
+      // notification again.
+      const payload = resetReminder ? { ...input, reminded_at: null } : input;
+      const { error } = await sb().from("errands").update(payload).eq("id", id);
       if (error) throw error;
       if (checklist) {
         const user_id = await uid();

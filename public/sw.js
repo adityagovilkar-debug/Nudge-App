@@ -1,6 +1,6 @@
 // Minimal service worker for PWA installability + a basic offline shell.
 // Network-first so data stays fresh, falling back to cache when offline.
-const CACHE = "nudge-v1";
+const CACHE = "nudge-v2";
 const APP_SHELL = ["/", "/upcoming", "/done", "/settings", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -35,5 +35,42 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(() => caches.match(request).then((r) => r || caches.match("/"))),
+  );
+});
+
+// --- Web Push ---------------------------------------------------------------
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || "Nudge";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: data.tag || "nudge",
+      data: { url: data.url || "/" },
+      requireInteraction: !!data.requireInteraction,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ("focus" in c) {
+          c.navigate(url);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
   );
 });

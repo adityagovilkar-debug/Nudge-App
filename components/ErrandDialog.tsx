@@ -110,11 +110,15 @@ export function ErrandDialog({
     };
     try {
       if (isEdit && errand) {
+        const origTime = errand.due_time ? errand.due_time.slice(0, 5) : "";
+        const resetReminder =
+          (errand.due_date ?? "") !== (input.due_date ?? "") || origTime !== (dueTime || "");
         await updateErrand.mutateAsync({
           id: errand.id,
           input,
           checklist,
           original: errand.checklist ?? [],
+          resetReminder,
         });
         toast.success("Saved");
       } else {

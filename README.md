@@ -77,6 +77,34 @@ Reminders use a Supabase **Edge Function** + **pg_cron** + **Resend**.
 
 Users can turn the morning email on/off in **Settings → Email reminders**.
 
+## 5. Phone push notifications (optional)
+
+Native phone/desktop notifications via Web Push: a buzz at each errand's due
+time, plus a morning summary. Works best on **Android (Chrome)** with Nudge
+installed to the home screen; also works on iOS 16.4+ for the installed PWA.
+
+1. Generate a VAPID key pair once: `npx web-push generate-vapid-keys`.
+2. In **Vercel → Environment Variables**, add:
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (public key)
+   - `VAPID_PRIVATE_KEY` (private key)
+   - `VAPID_SUBJECT` = `mailto:you@example.com`
+   - `CRON_SECRET` = a long random string
+   - `SUPABASE_SERVICE_ROLE_KEY` = from Supabase → Settings → API (server-only)
+   Redeploy so they take effect.
+3. In the Supabase **SQL Editor**, run
+   [`supabase/migrations/0003_push.sql`](supabase/migrations/0003_push.sql)
+   (subscriptions table + bookkeeping columns).
+4. Run [`supabase/migrations/0004_push_cron.sql`](supabase/migrations/0004_push_cron.sql)
+   after replacing `<CRON_SECRET>` with the same value you set in Vercel. It
+   calls `/api/push/send` every minute; that route sends due-time reminders and
+   the morning summary (at `REMINDER_HOUR` in each user's timezone).
+5. On each device: open the app, go to **Settings → Phone notifications →
+   Turn on notifications**, and allow the prompt. (On iPhone, add to Home Screen
+   first.)
+
+The send route is protected by `CRON_SECRET`; you can test it with
+`curl -X POST -H "Authorization: Bearer <CRON_SECRET>" https://<your-app>/api/push/send?test=1`.
+
 ## Project layout
 
 ```
