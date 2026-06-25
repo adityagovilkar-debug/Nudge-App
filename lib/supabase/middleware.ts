@@ -36,6 +36,7 @@ export async function updateSession(request: NextRequest) {
   const isPublic =
     path.startsWith("/login") ||
     path.startsWith("/auth") ||
+    path.startsWith("/api") || // API routes do their own auth (session or CRON_SECRET)
     path.startsWith("/_next") ||
     path === "/manifest.webmanifest";
 
