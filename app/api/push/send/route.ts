@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { reminderTimes, toMinutes } from "@/lib/water";
+
+interface WaterSettingsRow {
+  user_id: string;
+  reminders_enabled: boolean;
+  reminders_per_day: number;
+  window_start: string;
+  window_end: string;
+  last_water_reminder_key: string | null;
+}
 
 // Runs on the Node runtime (web-push needs Node crypto). Triggered every
 // minute by Supabase pg_cron (see 0004_push_cron.sql), protected by CRON_SECRET.
@@ -89,10 +99,22 @@ export async function POST(req: Request) {
     .select("id, full_name, timezone, last_morning_push_on")
     .in("id", [...byUser.keys()]);
 
+  // Water reminder settings for the same users.
+  const { data: waterRows } = await supabase
+    .from("water_settings")
+    .select(
+      "user_id, reminders_enabled, reminders_per_day, window_start, window_end, last_water_reminder_key",
+    )
+    .in("user_id", [...byUser.keys()]);
+  const waterByUser = new Map<string, WaterSettingsRow>(
+    (waterRows ?? []).map((w) => [w.user_id, w as WaterSettingsRow]),
+  );
+
   let pushed = 0;
   const dead: string[] = [];
   const reminded: string[] = [];
   const morningDone: { id: string; today: string }[] = [];
+  const waterKeyUpdates: { id: string; key: string }[] = [];
 
   async function sendTo(subs: Sub[], payload: Record<string, unknown>) {
     for (const s of subs) {
@@ -165,6 +187,33 @@ export async function POST(req: Request) {
       }
       if (!test) morningDone.push({ id: p.id, today });
     }
+
+    // 3) Water reminders: spread evenly across the user's window; fire each
+    //    slot once (keyed by local date + slot index).
+    const ws = waterByUser.get(p.id);
+    if (ws && ws.reminders_enabled && ws.reminders_per_day > 0) {
+      const slots = reminderTimes(
+        ws.reminders_per_day,
+        toMinutes(ws.window_start),
+        toMinutes(ws.window_end),
+      );
+      const [hh, mm] = hhmm.split(":");
+      const nowMin = Number(hh) * 60 + Number(mm);
+      let latestIdx = -1;
+      for (let i = 0; i < slots.length; i++) if (slots[i] <= nowMin) latestIdx = i;
+      if (latestIdx >= 0) {
+        const key = `${today}#${latestIdx}`;
+        if (ws.last_water_reminder_key !== key) {
+          await sendTo(subs, {
+            title: "💧 Water break",
+            body: "Time to drink some water 🥤",
+            url: siteUrl,
+            tag: "water",
+          });
+          waterKeyUpdates.push({ id: p.id, key });
+        }
+      }
+    }
   }
 
   // Persist bookkeeping so we don't repeat sends.
@@ -177,6 +226,12 @@ export async function POST(req: Request) {
   for (const m of morningDone) {
     await supabase.from("profiles").update({ last_morning_push_on: m.today }).eq("id", m.id);
   }
+  for (const w of waterKeyUpdates) {
+    await supabase
+      .from("water_settings")
+      .update({ last_water_reminder_key: w.key })
+      .eq("user_id", w.id);
+  }
   if (dead.length) {
     await supabase.from("push_subscriptions").delete().in("endpoint", dead);
   }
@@ -185,6 +240,7 @@ export async function POST(req: Request) {
     users: byUser.size,
     pushed,
     reminded: reminded.length,
+    waterReminders: waterKeyUpdates.length,
     deadRemoved: dead.length,
     test,
   });

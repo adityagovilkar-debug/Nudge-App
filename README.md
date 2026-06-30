@@ -9,6 +9,7 @@ an app (PWA).
 - **Checklists** — add shopping/checklist sub-items to any errand and tick them off.
 - **Repeating errands** — mark a repeating errand done and the next one is created automatically.
 - **Email reminders** — a daily morning digest of what's due today (and anything overdue).
+- **Water tracker** — log drinks via configurable containers (Glass/Mug/…), see the daily total + goal, a 7-day history, and get water reminders spread across the day.
 - **Today / Upcoming / Done** views.
 - **Big friendly UI**, dark mode, adjustable text size, installable PWA.
 - **Private by design** — owner-only Row Level Security: each account only ever sees its own data.
@@ -104,6 +105,15 @@ installed to the home screen; also works on iOS 16.4+ for the installed PWA.
 
 The send route is protected by `CRON_SECRET`; you can test it with
 `curl -X POST -H "Authorization: Bearer <CRON_SECRET>" https://<your-app>/api/push/send?test=1`.
+
+## 6. Water tracker
+
+Just run [`supabase/migrations/0005_water.sql`](supabase/migrations/0005_water.sql)
+in the SQL Editor and redeploy. No new env vars or cron — water reminders are
+handled by the same `/api/push/send` route + every-minute pg_cron from step 5.
+Each user opens the **Water** tab, where default containers are created
+automatically; they can set a daily goal, how many reminders to get and the time
+window, and edit/add containers (volume in ml or L).
 
 ## Project layout
 

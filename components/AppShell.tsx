@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, CalendarDays, CheckCircle2, Settings, Plus } from "lucide-react";
+import { Sun, CalendarDays, CheckCircle2, Settings, Plus, GlassWater } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ErrandDialog } from "./ErrandDialog";
 import { ERRAND_DIALOG_EVENT, openErrandDialog, type ErrandDialogDetail } from "@/lib/events";
@@ -16,6 +16,7 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Today", icon: Sun },
   { href: "/upcoming", label: "Upcoming", icon: CalendarDays },
   { href: "/done", label: "Done", icon: CheckCircle2 },
+  { href: "/water", label: "Water", icon: GlassWater },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -64,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Desktop nav */}
           <nav className="ml-4 hidden items-center gap-1 sm:flex">
-            {NAV.slice(0, 3).map((n) => (
+            {NAV.filter((n) => n.href !== "/settings").map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
@@ -117,7 +118,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom nav */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur sm:hidden">
-        <div className="mx-auto grid max-w-2xl grid-cols-4">
+        <div className="mx-auto grid max-w-2xl grid-cols-5">
           {NAV.map((n) => {
             const active = isActive(n.href);
             const Icon = n.icon;
