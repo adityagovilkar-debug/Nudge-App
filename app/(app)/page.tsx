@@ -8,6 +8,7 @@ import { splitViews, daysUntil } from "@/lib/errands";
 import { ErrandCard } from "@/components/ErrandCard";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
+import { WaterQuickLog } from "@/components/WaterQuickLog";
 import { openErrandDialog } from "@/lib/events";
 
 function greeting(): string {
@@ -48,6 +49,10 @@ export default function TodayPage() {
                 (overdue.length ? ` · ${overdue.length} overdue` : "") + "."}
           </p>
         )}
+      </div>
+
+      <div className="mb-5">
+        <WaterQuickLog />
       </div>
 
       {isLoading ? (
